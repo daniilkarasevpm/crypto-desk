@@ -82,18 +82,21 @@ async function fromBinance(coin, range) {
 async function getPrices(coin, range) {
   const key = coin.id + range;
   const hit = priceCache[key];
-  if (hit && Date.now() - hit.at < REFRESH_MS) return hit.data;
+  if (hit && Date.now() - hit.at < REFRESH_MS) return hit;
   let data;
+  let source = "CoinGecko";
   try {
     data = await fromCoinGecko(coin, range);
   } catch (e) {
     console.warn(coin.symbol, "CoinGecko failed, trying Binance:", e.message);
     data = await fromBinance(coin, range);
+    source = "Binance";
   }
   // Charts need strictly increasing times
   data = data.filter((p, i) => i === 0 || p.time > data[i - 1].time);
-  priceCache[key] = { at: Date.now(), data };
-  return data;
+  const result = { data, source, at: Date.now() };
+  priceCache[key] = result;
+  return result;
 }
 
 function buildChartCard(coin) {
@@ -107,7 +110,8 @@ function buildChartCard(coin) {
     <div class="ranges" role="group" aria-label="${coin.symbol} time range">
       ${Object.keys(RANGES).map((r, i) => `<button type="button" data-range="${r}" aria-pressed="${i === 0}">${r}</button>`).join("")}
     </div>
-    <div class="chart" id="chart-${coin.symbol}"></div>`;
+    <div class="chart" id="chart-${coin.symbol}"></div>
+    <p class="source" id="source-${coin.symbol}"></p>`;
   $("charts").appendChild(card);
 
   const css = getComputedStyle(document.documentElement);
@@ -129,12 +133,14 @@ function buildChartCard(coin) {
   let current = "1D";
   async function show(range) {
     current = range;
-    let data;
+    let data, result;
     try {
-      data = await getPrices(coin, range);
+      result = await getPrices(coin, range);
+      data = result.data;
     } catch (e) {
       console.error(coin.symbol, e);
       $(`change-${coin.symbol}`).innerHTML = '<span class="muted">Prices unavailable, retrying…</span>';
+      $(`source-${coin.symbol}`).textContent = "Could not reach CoinGecko or Binance: " + e.message;
       return;
     }
     if (range !== current || !data.length) return;      // a newer click won the race
@@ -146,6 +152,8 @@ function buildChartCard(coin) {
     chart.timeScale().fitContent();
     $(`price-${coin.symbol}`).textContent = usd(last);
     $(`change-${coin.symbol}`).innerHTML = pct(change) + ` <span class="muted">${range}</span>`;
+    const time = new Date(result.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    $(`source-${coin.symbol}`).textContent = `Live · ${result.source} · ${time}`;
   }
 
   card.querySelectorAll(".ranges button").forEach((btn) => {
