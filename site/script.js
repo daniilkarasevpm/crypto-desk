@@ -1,13 +1,19 @@
 // Crypto Desk: fills the page with data.
-// Step 3: charts use generated sample prices; the other blocks read sample files from data/.
-// Later steps replace these with live prices (Step 4) and robot-collected files (Steps 5-6).
+// Charts: live prices from CoinGecko (Binance as backup), loaded in the browser and refreshed every minute.
+// Other blocks: read files from data/ (sample files until the robot fills them in Steps 5-6).
 
 const COINS = [
-  { id: "bitcoin",  symbol: "BTC", name: "Bitcoin",  start: 64000 },
-  { id: "ethereum", symbol: "ETH", name: "Ethereum", start: 2600 },
-  { id: "solana",   symbol: "SOL", name: "Solana",   start: 150 },
+  { id: "bitcoin",  symbol: "BTC", name: "Bitcoin",  pair: "BTCUSDT", big: true },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum", pair: "ETHUSDT", big: true },
+  { id: "solana",   symbol: "SOL", name: "Solana",   pair: "SOLUSDT", big: false },
 ];
-const RANGES = { "1D": 1, "7D": 7, "30D": 30 };
+// For each range: days for CoinGecko, candle size and count for the Binance backup
+const RANGES = {
+  "1D":  { days: 1,  interval: "15m", limit: 96 },
+  "7D":  { days: 7,  interval: "1h",  limit: 168 },
+  "30D": { days: 30, interval: "4h",  limit: 180 },
+};
+const REFRESH_MS = 60 * 1000;
 
 // ---------- Small helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -52,17 +58,41 @@ async function renderStats() {
 }
 
 // ---------- 2. Price charts ----------
-// Sample prices: a random walk, so the layout can be judged before real data is connected.
-function samplePrices(start, days) {
-  const points = days === 1 ? 96 : days * 24;           // every 15 min for 1D, hourly otherwise
-  const step = (days * 86400) / points;
-  const now = Math.floor(Date.now() / 1000);
-  let price = start;
-  const data = [];
-  for (let i = points; i >= 0; i--) {
-    price *= 1 + (Math.random() - 0.48) * 0.006;
-    data.push({ time: now - Math.round(i * step), value: +price.toFixed(2) });
+// Live prices. Results are kept for a minute so switching ranges doesn't re-download.
+const priceCache = {};
+
+async function fromCoinGecko(coin, range) {
+  const url = `https://api.coingecko.com/api/v3/coins/${coin.id}/market_chart?vs_currency=usd&days=${RANGES[range].days}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`CoinGecko ${res.status}`);
+  const json = await res.json();
+  return json.prices.map(([ms, price]) => ({ time: Math.floor(ms / 1000), value: price }));
+}
+
+async function fromBinance(coin, range) {
+  const { interval, limit } = RANGES[range];
+  const url = `https://data-api.binance.vision/api/v3/klines?symbol=${coin.pair}&interval=${interval}&limit=${limit}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Binance ${res.status}`);
+  const rows = await res.json();
+  // Each row is a candle: [open time, open, high, low, close, ...]; we chart the close price
+  return rows.map((r) => ({ time: Math.floor(r[0] / 1000), value: parseFloat(r[4]) }));
+}
+
+async function getPrices(coin, range) {
+  const key = coin.id + range;
+  const hit = priceCache[key];
+  if (hit && Date.now() - hit.at < REFRESH_MS) return hit.data;
+  let data;
+  try {
+    data = await fromCoinGecko(coin, range);
+  } catch (e) {
+    console.warn(coin.symbol, "CoinGecko failed, trying Binance:", e.message);
+    data = await fromBinance(coin, range);
   }
+  // Charts need strictly increasing times
+  data = data.filter((p, i) => i === 0 || p.time > data[i - 1].time);
+  priceCache[key] = { at: Date.now(), data };
   return data;
 }
 
@@ -90,14 +120,24 @@ function buildChartCard(coin) {
     handleScroll: false,
     handleScale: false,
   });
-  const big = coin.start >= 1000;                       // no cents on BTC/ETH axis labels
+  const big = coin.big;                                 // no cents on BTC/ETH axis labels
   const series = chart.addAreaSeries({
     lineWidth: 2,
     priceFormat: { type: "price", precision: big ? 0 : 2, minMove: big ? 1 : 0.01 },
   });
 
-  function show(range) {
-    const data = samplePrices(coin.start, RANGES[range]);
+  let current = "1D";
+  async function show(range) {
+    current = range;
+    let data;
+    try {
+      data = await getPrices(coin, range);
+    } catch (e) {
+      console.error(coin.symbol, e);
+      $(`change-${coin.symbol}`).innerHTML = '<span class="muted">Prices unavailable, retrying…</span>';
+      return;
+    }
+    if (range !== current || !data.length) return;      // a newer click won the race
     const first = data[0].value, last = data[data.length - 1].value;
     const change = ((last - first) / first) * 100;
     const color = getComputedStyle(document.documentElement).getPropertyValue(change >= 0 ? "--up" : "--down").trim();
@@ -115,10 +155,10 @@ function buildChartCard(coin) {
     });
   });
   show("1D");
+  setInterval(() => show(current), REFRESH_MS);         // keep prices fresh while the page is open
 }
 
 function renderCharts() {
-  $("sample-badge").hidden = false;                     // charts are sample data in Step 3
   if (!window.LightweightCharts) {
     $("charts").innerHTML = '<p class="card muted">Charts could not load. Check your connection and refresh.</p>';
     return;
