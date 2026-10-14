@@ -1,0 +1,10 @@
+{
+  "sample": true,
+  "updated": "2026-10-14T16:30:00Z",
+  "items": [
+    { "title": "Sample headline: Bitcoin holds above key level ahead of CPI", "source": "CoinDesk", "url": "https://www.coindesk.com/", "published": "2026-10-14T16:05:00Z" },
+    { "title": "Sample headline: ETH staking flows rise for third week", "source": "The Block", "url": "https://www.theblock.co/", "published": "2026-10-14T15:20:00Z" },
+    { "title": "Sample headline: Solana network activity hits monthly high", "source": "Decrypt", "url": "https://decrypt.co/", "published": "2026-10-14T14:10:00Z" },
+    { "title": "Sample headline: Traders price in a Fed rate cut in October", "source": "Cointelegraph", "url": "https://cointelegraph.com/", "published": "2026-10-14T12:45:00Z" }
+  ]
+}

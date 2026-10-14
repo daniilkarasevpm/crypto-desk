@@ -1,0 +1,125 @@
+/* ---------- Design tokens: colours and spacing used everywhere ---------- */
+:root {
+  --bg: #0f1115;          /* page background */
+  --card: #171a21;        /* panels */
+  --line: #262a33;        /* borders */
+  --text: #e6e8eb;
+  --muted: #8b929c;
+  --up: #22c55e;          /* price went up */
+  --down: #ef4444;        /* price went down */
+  --accent: #60a5fa;
+  --high: #ef4444;        /* event impact levels */
+  --med: #f59e0b;
+  --low: #8b929c;
+  --radius: 10px;
+  --gap: 16px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, p { margin: 0; }
+h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.muted { color: var(--muted); }
+
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 14px var(--gap); border-bottom: 1px solid var(--line);
+}
+.topbar h1 { font-size: 18px; }
+.meta { color: var(--muted); font-size: 13px; }
+.badge {
+  background: var(--med); color: #111; font-weight: 600; font-size: 12px;
+  padding: 2px 8px; border-radius: 999px; margin-right: 6px;
+}
+
+/* ---------- Page grid: 2 columns on laptops, 1 on phones ---------- */
+.grid {
+  max-width: 1280px; margin: 0 auto; padding: var(--gap);
+  display: grid; gap: var(--gap);
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "stats    stats"
+    "charts   charts"
+    "events   analysts"
+    "news     news";
+}
+.stats    { grid-area: stats; }
+.charts   { grid-area: charts; }
+.events   { grid-area: events; }
+.analysts { grid-area: analysts; }
+.news     { grid-area: news; }
+
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--gap);
+}
+
+/* ---------- Stats tiles ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.tile .label { color: var(--muted); font-size: 13px; }
+.tile .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
+.change { font-size: 13px; color: var(--muted); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* ---------- Price charts ---------- */
+.charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+.coin-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.coin-name { font-weight: 600; }
+.coin-price { font-size: 20px; font-weight: 600; }
+.ranges { display: flex; gap: 4px; margin: 10px 0; }
+.ranges button {
+  background: transparent; color: var(--muted); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.ranges button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
+.chart { height: 200px; }
+
+/* ---------- Events ---------- */
+.day { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.day:first-child { margin-top: 0; }
+.event { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; }
+.impact { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; flex: none; }
+.impact.high { background: color-mix(in srgb, var(--high) 20%, transparent); color: var(--high); }
+.impact.medium { background: color-mix(in srgb, var(--med) 20%, transparent); color: var(--med); }
+.impact.low { background: color-mix(in srgb, var(--low) 20%, transparent); color: var(--low); }
+.event .when { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
+.event.crypto .title { color: var(--muted); }
+
+/* ---------- Analysts ---------- */
+.moods { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.mood { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.mood.bullish { color: var(--up); border-color: var(--up); }
+.mood.bearish { color: var(--down); border-color: var(--down); }
+.points { margin: 0; padding-left: 18px; }
+.points li { margin-bottom: 6px; }
+.sub { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.disclaimer { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+/* ---------- News ---------- */
+.news-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 32px; }
+.news-list li { break-inside: avoid; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.news-list .src { color: var(--muted); font-size: 12px; display: block; }
+
+/* ---------- Tablets ---------- */
+@media (max-width: 960px) {
+  .charts { grid-template-columns: 1fr; }
+}
+/* ---------- Phones: everything in one column ---------- */
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "stats" "charts" "events" "analysts" "news";
+  }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .news-list { columns: 1; }
+}
