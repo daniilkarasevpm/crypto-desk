@@ -56,13 +56,18 @@ def keep_live(name, error):
 # ---------- Market statistics ----------
 def market():
     key = os.environ.get("COINGECKO_API_KEY", "")
-    g = get_json("https://api.coingecko.com/api/v3/global",
-                 {"x-cg-demo-api-key": key} if key else None)["data"]
+    auth = {"x-cg-demo-api-key": key} if key else None
+    g = get_json("https://api.coingecko.com/api/v3/global", auth)["data"]
+    # CoinGecko's global volume figure is sometimes inflated by junk tokens (we saw $80T),
+    # so add up the 24h volume of the 250 largest coins instead.
+    top = get_json("https://api.coingecko.com/api/v3/coins/markets"
+                   "?vs_currency=usd&order=market_cap_desc&per_page=250&page=1", auth)
+    volume = sum(c.get("total_volume") or 0 for c in top)
     fng = get_json("https://api.alternative.me/fng/?limit=1")["data"][0]
     return {
         "total_market_cap_usd": g["total_market_cap"]["usd"],
         "market_cap_change_24h_pct": g["market_cap_change_percentage_24h_usd"],
-        "total_volume_usd": g["total_volume"]["usd"],
+        "total_volume_usd": volume,
         "btc_dominance_pct": g["market_cap_percentage"]["btc"],
         "fear_greed": {"value": int(fng["value"]), "label": fng["value_classification"]},
     }
