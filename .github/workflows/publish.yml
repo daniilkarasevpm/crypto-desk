@@ -28,11 +28,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Fetch market stats, the economic calendar and news into data/
+      # Fetch market stats, the economic calendar and news into data/,
+      # plus the AI analysts' summary 3 times a day
       - name: Collect data
         run: python3 scripts/collect.py
         env:
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       # Put the page and the data files together in one folder for publishing
       - name: Assemble site

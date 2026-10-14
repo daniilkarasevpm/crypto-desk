@@ -230,11 +230,17 @@ async function renderAnalysts() {
     markSample(a, "analysts");
     const moods = Object.entries(a.coins)
       .map(([sym, c]) => `<span class="mood ${c.mood}">${sym}: ${c.mood[0].toUpperCase() + c.mood.slice(1)}</span>`).join("");
+    const whys = Object.entries(a.coins).filter(([, c]) => c.why)
+      .map(([sym, c]) => `<li><strong>${sym}:</strong> ${esc(c.why)}</li>`).join("");
     const points = a.points
       .map((p) => `<li>${esc(p.text)} <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.source)}</a></li>`).join("");
-    const written = new Date(a.updated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const at = new Date(a.updated);
+    const sameDay = at.toDateString() === new Date().toDateString();
+    const written = (sameDay ? "" : at.toLocaleDateString([], { day: "numeric", month: "short" }) + ", ")
+      + at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     $("analysts-body").innerHTML = `
       <div class="moods">${moods}</div>
+      ${whys ? `<ul class="whys">${whys}</ul>` : ""}
       <ul class="points">${points}</ul>
       <p class="sub"><strong>Levels watched:</strong> ${esc(a.levels)}</p>
       <p class="sub"><strong>Key risks:</strong> ${esc(a.risks)}</p>
