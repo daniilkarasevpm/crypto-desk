@@ -35,15 +35,20 @@ async function load(name) {
   if (!res.ok) throw new Error(`${name}.json: ${res.status}`);
   return res.json();
 }
-function markSample(data) {
-  if (data && data.sample) $("sample-badge").hidden = false;
+// The yellow badge lists blocks still showing sample data
+const sampleBlocks = new Set();
+function markSample(data, block) {
+  if (!data || !data.sample) return;
+  sampleBlocks.add(block);
+  $("sample-badge").textContent = "Sample data: " + [...sampleBlocks].join(", ");
+  $("sample-badge").hidden = false;
 }
 
 // ---------- 1. Market statistics ----------
 async function renderStats() {
   try {
     const m = await load("market");
-    markSample(m);
+    markSample(m, "stats");
     $("stat-mcap").textContent = usd(m.total_market_cap_usd);
     $("stat-mcap-change").innerHTML = pct(m.market_cap_change_24h_pct) + " 24h";
     $("stat-volume").textContent = usd(m.total_volume_usd);
@@ -194,20 +199,21 @@ function countdown(d) {
 async function renderEvents() {
   try {
     const data = await load("events");
-    markSample(data);
+    markSample(data, "events");
     const upcoming = data.events
       .map((e) => ({ ...e, d: new Date(e.date) }))
       .filter((e) => e.d > Date.now() - 3600000)
       .sort((a, b) => a.d - b.d);
-    if (!upcoming.length) { $("events-list").innerHTML = '<p class="muted">No events in the next two weeks.</p>'; return; }
+    if (!upcoming.length) { $("events-list").innerHTML = '<p class="muted">No major US events in the next three weeks.</p>'; return; }
     let html = "", lastDay = "";
     for (const e of upcoming) {
       const label = dayLabel(e.d);
       if (label !== lastDay) { html += `<p class="day">${label}</p>`; lastDay = label; }
       const time = e.d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const numbers = [e.forecast && `Forecast ${esc(e.forecast)}`, e.previous && `Prev ${esc(e.previous)}`].filter(Boolean).join(" · ");
       html += `<div class="event ${e.category}">
-        <span class="impact ${e.impact}">${e.impact.toUpperCase()}</span>
-        <span class="title">${esc(e.title)}</span>
+        <span class="impact ${e.impact}">${e.impact === "medium" ? "MED" : e.impact.toUpperCase()}</span>
+        <span class="title">${esc(e.title)}${numbers ? `<span class="numbers">${numbers}</span>` : ""}</span>
         <span class="when">${time} · ${countdown(e.d)}</span></div>`;
     }
     $("events-list").innerHTML = html;
@@ -221,7 +227,7 @@ async function renderEvents() {
 async function renderAnalysts() {
   try {
     const a = await load("analysts");
-    markSample(a);
+    markSample(a, "analysts");
     const moods = Object.entries(a.coins)
       .map(([sym, c]) => `<span class="mood ${c.mood}">${sym}: ${c.mood[0].toUpperCase() + c.mood.slice(1)}</span>`).join("");
     const points = a.points
@@ -248,7 +254,7 @@ function ago(d) {
 async function renderNews() {
   try {
     const n = await load("news");
-    markSample(n);
+    markSample(n, "news");
     $("news-list").innerHTML = n.items.slice(0, 10).map((i) =>
       `<li><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>
        <span class="src">${esc(i.source)} · ${ago(new Date(i.published))}</span></li>`).join("");
