@@ -1,0 +1,16 @@
+{
+  "sample": true,
+  "updated": "2026-10-14T12:00:00Z",
+  "coins": {
+    "BTC": { "mood": "bullish" },
+    "ETH": { "mood": "neutral" },
+    "SOL": { "mood": "bullish" }
+  },
+  "points": [
+    { "text": "Sample point: most analysts expect volatility around tomorrow's CPI release.", "source": "CoinDesk", "url": "https://www.coindesk.com/" },
+    { "text": "Sample point: ETF inflows remain positive for the second week.", "source": "The Block", "url": "https://www.theblock.co/" },
+    { "text": "Sample point: SOL momentum is supported by rising network activity.", "source": "Decrypt", "url": "https://decrypt.co/" }
+  ],
+  "levels": "Sample: BTC support around $62,000, resistance near $66,000.",
+  "risks": "Sample: a hotter-than-expected CPI print could pull prices lower."
+}

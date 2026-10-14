@@ -1,0 +1,13 @@
+{
+  "sample": true,
+  "updated": "2026-10-14T16:30:00Z",
+  "events": [
+    { "date": "2026-10-15T12:30:00Z", "title": "US CPI inflation, September (sample)", "impact": "high", "category": "macro" },
+    { "date": "2026-10-15T18:00:00Z", "title": "Fed governor speech (sample)", "impact": "medium", "category": "macro" },
+    { "date": "2026-10-16T12:30:00Z", "title": "US retail sales (sample)", "impact": "medium", "category": "macro" },
+    { "date": "2026-10-20T09:00:00Z", "title": "Token unlock: example project (sample)", "impact": "low", "category": "crypto" },
+    { "date": "2026-10-24T12:30:00Z", "title": "US PCE inflation (sample)", "impact": "high", "category": "macro" },
+    { "date": "2026-10-28T18:00:00Z", "title": "FOMC interest rate decision (sample)", "impact": "high", "category": "macro" },
+    { "date": "2026-10-28T18:30:00Z", "title": "Fed Chair press conference (sample)", "impact": "high", "category": "macro" }
+  ]
+}

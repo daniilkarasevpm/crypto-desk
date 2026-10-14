@@ -1,0 +1,9 @@
+{
+  "sample": true,
+  "updated": "2026-10-14T16:30:00Z",
+  "total_market_cap_usd": 2350000000000,
+  "market_cap_change_24h_pct": 1.24,
+  "total_volume_usd": 86400000000,
+  "btc_dominance_pct": 56.8,
+  "fear_greed": { "value": 62, "label": "Greed" }
+}
