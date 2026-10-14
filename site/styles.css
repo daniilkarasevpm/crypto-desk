@@ -1,16 +1,21 @@
 /* ---------- Design tokens: colours and spacing used everywhere ---------- */
 :root {
-  --bg: #0f1115;          /* page background */
-  --card: #171a21;        /* panels */
-  --line: #262a33;        /* borders */
-  --text: #e6e8eb;
-  --muted: #8b929c;
+  --bg: #0b0714;          /* page background: midnight purple */
+  --card: #140e22;        /* panels */
+  --line: #2c2142;        /* borders */
+  --text: #f1eafc;
+  --muted: #9a8fb3;
   --up: #22c55e;          /* price went up */
   --down: #ef4444;        /* price went down */
-  --accent: #60a5fa;
+  --accent: #ff7ad9;      /* links and highlights: neon pink */
+  --pink: #ff4fd8;
+  --cyan: #22d3ee;
+  --violet: #a855f7;
+  --holo: linear-gradient(135deg, var(--pink), var(--violet) 50%, var(--cyan));
+  --pixel: "Silkscreen", ui-monospace, monospace;
   --high: #ef4444;        /* event impact levels */
   --med: #f59e0b;
-  --low: #8b929c;
+  --low: #9a8fb3;
   --radius: 10px;
   --gap: 16px;
 }
@@ -25,16 +30,36 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 h1, h2, p { margin: 0; }
-h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+h2 { font: 400 14px/1.2 var(--pixel); letter-spacing: .02em; margin-bottom: 12px; color: #ffd1f3; }
 .muted { color: var(--muted); }
 
 /* ---------- Top bar ---------- */
 .topbar {
+  position: relative; overflow: hidden;
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
-  padding: 14px var(--gap); border-bottom: 1px solid var(--line);
+  min-height: 92px; padding: 18px var(--gap);
+  background:
+    radial-gradient(ellipse at 50% 140%, rgba(255, 79, 216, .28), transparent 60%),
+    linear-gradient(180deg, #120a24, #0b0714);
 }
-.topbar h1 { font-size: 18px; }
-.meta { color: var(--muted); font-size: 13px; }
+.topbar::after { /* holographic underline */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--holo); box-shadow: 0 0 12px var(--pink);
+}
+.brand, .meta { position: relative; z-index: 2; }
+.brand { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.topbar h1 {
+  display: flex; align-items: center; gap: 10px;
+  font: 400 22px/1 var(--pixel); color: #fff;
+  text-shadow: 0 0 8px var(--pink), 0 0 18px rgba(255, 79, 216, .6);
+}
+.title-heart { width: 22px; height: auto; animation: beat 1.2s steps(2) infinite; filter: drop-shadow(0 0 4px var(--pink)); }
+.love-ticker {
+  font: 400 11px/1 var(--pixel); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: rgba(20, 14, 34, .8);
+}
+.love-ticker b { color: var(--pink); font-weight: 400; }
+.meta { color: var(--muted); font-size: 13px; margin-right: 76px; }
 .badge {
   background: var(--med); color: #111; font-weight: 600; font-size: 12px;
   padding: 2px 8px; border-radius: 999px; margin-right: 6px;
@@ -61,10 +86,17 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); padding: var(--gap);
 }
+/* Holographic edge and soft neon glow on every panel */
+.card, .tile {
+  border: 1px solid transparent;
+  background: linear-gradient(var(--card), var(--card)) padding-box,
+              linear-gradient(135deg, rgba(255,79,216,.55), rgba(168,85,247,.25) 50%, rgba(34,211,238,.45)) border-box;
+  box-shadow: 0 0 22px rgba(255, 79, 216, .07);
+}
 
 /* ---------- Stats tiles ---------- */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.tile { border-radius: var(--radius); padding: 12px 14px; }
 .tile .label { color: var(--muted); font-size: 13px; }
 .tile .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
 .change { font-size: 13px; color: var(--muted); }
@@ -81,7 +113,7 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   background: transparent; color: var(--muted); border: 1px solid var(--line);
   border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer;
 }
-.ranges button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
+.ranges button[aria-pressed="true"] { color: var(--text); border-color: var(--pink); box-shadow: 0 0 8px rgba(255,79,216,.45); }
 .chart { height: 200px; }
 .source { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
@@ -115,6 +147,79 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 .news-list li { break-inside: avoid; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .news-list .src { color: var(--muted); font-size: 12px; display: block; }
 
+/* ---------- Love theme: floating hearts, doves, cupid ---------- */
+.grid { position: relative; z-index: 1; }
+.sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.sky::after { /* synthwave grid fading in at the bottom */
+  content: ""; position: absolute; left: -50%; right: -50%; bottom: 0; height: 45vh;
+  background:
+    linear-gradient(rgba(255,79,216,.22) 1px, transparent 1px) 0 0 / 100% 40px,
+    linear-gradient(90deg, rgba(34,211,238,.16) 1px, transparent 1px) 0 0 / 60px 100%;
+  transform: perspective(300px) rotateX(55deg); transform-origin: bottom;
+  mask-image: linear-gradient(transparent, #000 70%);
+  -webkit-mask-image: linear-gradient(transparent, #000 70%);
+}
+.float-heart {
+  position: absolute; bottom: -40px; animation: rise linear infinite;
+  filter: drop-shadow(0 0 6px var(--pink));
+}
+.float-heart svg, .burst-heart svg, .dove svg, .arrow svg, .cupid svg { display: block; width: 100%; height: auto; }
+.float-heart.cyan { filter: hue-rotate(-95deg) drop-shadow(0 0 6px var(--cyan)); }
+@keyframes rise {
+  from { transform: translate(0, 0) rotate(-8deg); }
+  50%  { transform: translate(18px, -55vh) rotate(8deg); }
+  to   { transform: translate(0, -115vh) rotate(-8deg); }
+}
+@keyframes beat { 50% { transform: scale(1.18); } }
+
+.stage { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.dove {
+  position: absolute; left: -60px; width: 30px; opacity: .9;
+  animation: fly 18s linear infinite; filter: drop-shadow(0 0 5px rgba(180,167,245,.8));
+}
+@keyframes fly {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(28vw, -8px); }
+  50%  { transform: translate(56vw, 6px); }
+  75%  { transform: translate(84vw, -6px); }
+  100% { transform: translate(calc(100vw + 120px), 0); }
+}
+.frame-a { animation: flap .5s steps(1) infinite; }
+.frame-b { animation: flap .5s steps(1) infinite reverse; }
+@keyframes flap { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+.cupid {
+  position: absolute; z-index: 3; right: 18px; top: 50%; width: 52px; margin-top: -26px;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  animation: hover 3s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(255,79,216,.7));
+}
+@keyframes hover { 50% { transform: translateY(-8px); } }
+.arrow {
+  position: absolute; width: 36px; animation: shoot 2.2s ease-in forwards;
+  filter: drop-shadow(0 0 4px var(--cyan));
+}
+@keyframes shoot {
+  from { transform: translateX(0); opacity: 1; }
+  85%  { opacity: 1; }
+  to   { transform: translateX(-100vw); opacity: 0; }
+}
+.burst-heart {
+  position: fixed; z-index: 50; width: 16px; margin: -8px 0 0 -8px; pointer-events: none;
+  animation: burst 1s ease-out forwards; filter: drop-shadow(0 0 6px var(--pink));
+}
+@keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(.4); opacity: 0; } }
+
+.love {
+  position: relative; z-index: 1; text-align: center; padding: 8px var(--gap) 28px;
+  font: 400 12px/1 var(--pixel); color: var(--muted);
+}
+.mini-heart { width: 13px; height: auto; vertical-align: -1px; animation: beat 1.2s steps(2) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .title-heart, .mini-heart, .cupid, .frame-a, .frame-b { animation: none; }
+  .frame-b { display: none; }
+}
+
 /* ---------- Tablets ---------- */
 @media (max-width: 960px) {
   .charts { grid-template-columns: 1fr; }
@@ -127,4 +232,8 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   }
   .stats { grid-template-columns: 1fr 1fr; }
   .news-list { columns: 1; }
+  .topbar { min-height: 0; padding-right: 80px; }
+  .topbar h1 { font-size: 18px; }
+  .meta { margin-right: 0; }
+  .cupid { width: 44px; right: 14px; margin-top: -22px; }
 }
