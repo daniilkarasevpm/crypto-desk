@@ -15,6 +15,8 @@ import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -157,7 +159,8 @@ def news():
 
 # ---------- Analysts' view (AI summary) ----------
 SLOTS_UTC = (11, 16, 21)  # 7 am, 12 pm and 5 pm New York time (summer); one summary per slot
-MODELS = ("gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash")  # first one that works
+# "-latest" names always point at Google's current models; older fixed names get retired
+MODELS = ("gemini-flash-latest", "gemini-flash-lite-latest")
 COIN_WORDS = re.compile(r"\b(bitcoin|btc|ether|ethereum|eth|solana|sol|crypto market|price|analyst|forecast|"
                         r"predict|outlook|rally|sell-?off|support|resistance|fed|etf)\b", re.I)
 
@@ -201,6 +204,23 @@ def analysts_due():
     return written < last_slot
 
 
+def gemini_models(key):
+    """Our preferred models, then any other Flash model this key can use (found by asking Google)."""
+    names = list(MODELS)
+    try:
+        listing = get_json("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+                           {"x-goog-api-key": key})
+        for m in listing.get("models", []):
+            name = m["name"].removeprefix("models/")
+            if ("flash" in name and "generateContent" in m.get("supportedGenerationMethods", [])
+                    and not any(w in name for w in ("image", "tts", "audio", "live", "preview", "exp"))
+                    and name not in names):
+                names.append(name)
+    except Exception as e:
+        print(f"  could not list Gemini models: {e}", file=sys.stderr)
+    return names
+
+
 def ask_gemini(prompt):
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
@@ -210,17 +230,25 @@ def ask_gemini(prompt):
         "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
     }).encode()
     errors = []
-    for model in MODELS:
+    for model in gemini_models(key)[:5]:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        req = urllib.request.Request(url, data=body, method="POST", headers={
-            **UA, "Content-Type": "application/json", "x-goog-api-key": key})
-        try:
-            with urllib.request.urlopen(req, timeout=90) as res:
-                out = json.loads(res.read())
-            print(f"  summary written by {model}")
-            return json.loads(out["candidates"][0]["content"]["parts"][0]["text"])
-        except Exception as e:
-            errors.append(f"{model}: {e}")
+        for attempt in range(3):  # "busy" (503) and "slow down" (429) usually clear within seconds
+            req = urllib.request.Request(url, data=body, method="POST", headers={
+                **UA, "Content-Type": "application/json", "x-goog-api-key": key})
+            try:
+                with urllib.request.urlopen(req, timeout=90) as res:
+                    out = json.loads(res.read())
+                print(f"  summary written by {model}")
+                return json.loads(out["candidates"][0]["content"]["parts"][0]["text"])
+            except urllib.error.HTTPError as e:
+                errors.append(f"{model}: HTTP {e.code}")
+                if e.code in (429, 500, 503) and attempt < 2:
+                    time.sleep(10 * (attempt + 1))
+                    continue
+                break
+            except Exception as e:
+                errors.append(f"{model}: {e}")
+                break
     raise RuntimeError("; ".join(errors))
 
 
