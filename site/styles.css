@@ -83,6 +83,7 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 }
 .ranges button[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
 .chart { height: 200px; }
+.source { color: var(--muted); font-size: 12px; margin-top: 6px; }
 
 /* ---------- Events ---------- */
 .day { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
