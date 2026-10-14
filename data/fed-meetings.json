@@ -1,0 +1,9 @@
+{
+  "note": "Fed (FOMC) rate decisions, from the official schedule at federalreserve.gov. Refresh when the next year's dates are published. Times are 2:00 pm and 2:30 pm New York time, in UTC.",
+  "events": [
+    { "date": "2026-10-28T18:00:00Z", "title": "FOMC interest rate decision", "impact": "high", "category": "macro" },
+    { "date": "2026-10-28T18:30:00Z", "title": "Fed Chair press conference", "impact": "high", "category": "macro" },
+    { "date": "2026-12-09T19:00:00Z", "title": "FOMC interest rate decision", "impact": "high", "category": "macro" },
+    { "date": "2026-12-09T19:30:00Z", "title": "Fed Chair press conference", "impact": "high", "category": "macro" }
+  ]
+}

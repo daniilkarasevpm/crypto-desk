@@ -95,6 +95,7 @@ h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
 .impact.low { background: color-mix(in srgb, var(--low) 20%, transparent); color: var(--low); }
 .event .when { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; }
 .event.crypto .title { color: var(--muted); }
+.event .numbers { display: block; color: var(--muted); font-size: 12px; }
 
 /* ---------- Analysts ---------- */
 .moods { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
