@@ -4,13 +4,16 @@ Runs inside GitHub Actions every 15 minutes and writes fresh files into data/:
   market.json  - total market cap, 24h volume, BTC dominance (CoinGecko) + Fear & Greed (alternative.me)
   events.json  - US economic calendar for the next 3 weeks (ForexFactory feed for this week and next) + Fed meeting dates
   news.json    - last 24h headlines from CoinDesk, Cointelegraph, The Block and Decrypt (RSS)
+  analysts.json - AI summary (Google Gemini, free tier) of today's analysis, 3 times a day
 
 If a source fails, the file currently live on the site is kept, so the page never goes blank.
 Uses only Python's standard library, so there is nothing to install.
 """
 import email.utils
+import html
 import json
 import os
+import re
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -122,6 +125,9 @@ FEEDS = {
 }
 
 
+ARTICLES = []  # today's articles with their short descriptions, reused by the analysts step
+
+
 def news():
     items, seen = [], set()
     for source, url in FEEDS.items():
@@ -141,15 +147,130 @@ def news():
                 continue
             seen.add(title.lower())
             items.append({"title": title, "source": source, "url": link, "published": iso(published)})
+            text = re.sub(r"<[^>]+>", " ", html.unescape(it.findtext("description") or ""))
+            ARTICLES.append({**items[-1], "summary": " ".join(text.split())[:500]})
     if not items:
         raise RuntimeError("no headlines from any feed")
     items.sort(key=lambda i: i["published"], reverse=True)
     return {"items": items[:30]}
 
 
-if __name__ == "__main__":
-    for name, collect in (("market", market), ("events", events), ("news", news)):
+# ---------- Analysts' view (AI summary) ----------
+SLOTS_UTC = (11, 16, 21)  # 7 am, 12 pm and 5 pm New York time (summer); one summary per slot
+MODELS = ("gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash")  # first one that works
+COIN_WORDS = re.compile(r"\b(bitcoin|btc|ether|ethereum|eth|solana|sol|crypto market|price|analyst|forecast|"
+                        r"predict|outlook|rally|sell-?off|support|resistance|fed|etf)\b", re.I)
+
+PROMPT = """You summarise today's public crypto market commentary for a trader who holds BTC, ETH and SOL.
+Use ONLY the articles and data below. Do not invent facts, numbers or sources.
+
+Return JSON exactly in this shape:
+{{
+  "coins": {{
+    "BTC": {{"mood": "bullish|neutral|bearish", "why": "one short sentence"}},
+    "ETH": {{"mood": "...", "why": "..."}},
+    "SOL": {{"mood": "...", "why": "..."}}
+  }},
+  "points": [{{"text": "one sentence: what analysts or the news expect and why", "url": "<url of the article it comes from>"}}],
+  "levels": "price levels analysts mention today, with the coin, or empty string if none",
+  "risks": "the main risks for today in one or two sentences"
+}}
+Rules: 3 to 5 points; every point's url must be copied exactly from the articles list; mood reflects the
+balance of today's commentary, not your own opinion; plain English, no hype.
+
+Market now: {market}
+Upcoming US events: {events}
+
+Articles (last 24 hours):
+{articles}
+"""
+
+
+def analysts_due():
+    """True if the live summary was written before the most recent slot (or is still sample)."""
+    try:
+        live = json.loads(get(LIVE_SITE + "analysts.json"))
+    except Exception:
+        return True
+    if live.get("sample"):
+        return True
+    written = datetime.fromisoformat(live["updated"].replace("Z", "+00:00"))
+    slots = [NOW.replace(hour=h, minute=0, second=0, microsecond=0) for h in SLOTS_UTC]
+    slots += [t - timedelta(days=1) for t in slots]
+    last_slot = max(t for t in slots if t <= NOW)
+    return written < last_slot
+
+
+def ask_gemini(prompt):
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY secret is not set")
+    body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
+    }).encode()
+    errors = []
+    for model in MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        req = urllib.request.Request(url, data=body, method="POST", headers={
+            **UA, "Content-Type": "application/json", "x-goog-api-key": key})
         try:
-            save(name, collect())
+            with urllib.request.urlopen(req, timeout=90) as res:
+                out = json.loads(res.read())
+            print(f"  summary written by {model}")
+            return json.loads(out["candidates"][0]["content"]["parts"][0]["text"])
         except Exception as e:
-            keep_live(name, e)
+            errors.append(f"{model}: {e}")
+    raise RuntimeError("; ".join(errors))
+
+
+def analysts(market_data, events_data):
+    recent = sorted(ARTICLES, key=lambda a: a["published"], reverse=True)
+    articles = [a for a in recent if COIN_WORDS.search(a["title"] + " " + a["summary"])][:40]
+    if len(articles) < 3:
+        raise RuntimeError(f"only {len(articles)} relevant articles today")
+    listing = "\n".join(f"- [{a['source']}] {a['title']} | {a['summary']} | url: {a['url']}" for a in articles)
+    m = market_data or {}
+    market_line = (f"total crypto market cap ${m.get('total_market_cap_usd', 0) / 1e12:.2f}T "
+                   f"({m.get('market_cap_change_24h_pct', 0):+.1f}% 24h), Fear & Greed "
+                   f"{m.get('fear_greed', {}).get('value', '?')} ({m.get('fear_greed', {}).get('label', '?')})")
+    events_line = "; ".join(f"{e['date'][:16]} {e['title']}" for e in (events_data or {}).get("events", [])[:8]) or "none"
+    ai = ask_gemini(PROMPT.format(market=market_line, events=events_line, articles=listing))
+
+    # Check the answer: only known moods, and every point must link to one of today's articles
+    by_url = {a["url"]: a for a in articles}
+    coins = {}
+    for sym in ("BTC", "ETH", "SOL"):
+        c = ai.get("coins", {}).get(sym, {})
+        mood = c.get("mood") if c.get("mood") in ("bullish", "neutral", "bearish") else "neutral"
+        coins[sym] = {"mood": mood, "why": str(c.get("why", ""))[:200]}
+    points = []
+    for p in ai.get("points", []):
+        src = by_url.get(str(p.get("url", "")).strip())
+        if src and p.get("text"):
+            points.append({"text": str(p["text"])[:300], "source": src["source"], "url": src["url"]})
+    if not points:
+        raise RuntimeError("summary had no points linked to real articles")
+    return {"coins": coins, "points": points[:5],
+            "levels": str(ai.get("levels") or "None mentioned today.")[:300],
+            "risks": str(ai.get("risks") or "")[:400]}
+
+
+def run(name, collect):
+    try:
+        data = collect()
+        save(name, data)
+        return data
+    except Exception as e:
+        keep_live(name, e)
+        return None
+
+
+if __name__ == "__main__":
+    market_data = run("market", market)
+    events_data = run("events", events)
+    run("news", news)
+    if analysts_due():
+        run("analysts", lambda: analysts(market_data, events_data))
+    else:
+        keep_live("analysts", "not due yet (runs at 11:00, 16:00 and 21:00 UTC)")
